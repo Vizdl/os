@@ -193,7 +193,7 @@ $(BUILD_DIR)/switch.o: thread/switch.S
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-.PHONY : mk_dir hd clean all mk_img
+.PHONY : mk_dir hd clean all mk_img run
 
 mk_img:
 	if [[ ! -f $(BUILD_DIR)/hd60M.img ]];then bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img;fi
@@ -212,3 +212,6 @@ clean:
 build: $(BUILD_DIR)/kernel.bin
 
 all: mk_dir build mk_img hd
+
+run: all
+	bochs -qf config/bochs/bochsrc
