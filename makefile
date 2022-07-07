@@ -193,14 +193,17 @@ $(BUILD_DIR)/switch.o: thread/switch.S
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-.PHONY : mk_dir hd clean all
+.PHONY : mk_dir hd clean all mk_img
+
+mk_img:
+	if [[ ! -f $(BUILD_DIR)/hd60M.img ]];then bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img;fi
 
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
 
 hd:
 	dd if=$(BUILD_DIR)/kernel.bin \
-           of=/home/work/my_workspace/bochs/hd60M.img \
+           of=$(BUILD_DIR)/hd60M.img \
            bs=512 count=200 seek=9 conv=notrunc
 
 clean:
@@ -208,4 +211,4 @@ clean:
 
 build: $(BUILD_DIR)/kernel.bin
 
-all: mk_dir build hd
+all: mk_dir build mk_img hd
