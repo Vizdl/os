@@ -232,5 +232,5 @@ build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
 
 all: mk_dir build mk_img hd
 
-run: all
+run: all config/bochs/bochsrc
 	bochs -qf config/bochs/bochsrc
