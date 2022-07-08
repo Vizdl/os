@@ -4,6 +4,7 @@ AS = nasm
 CC = gcc
 LD = ld
 LIB = -I lib/ -I lib/kernel/ -I lib/user/ -I kernel/ -I device/ -I thread/ -I userprog/ -I fs/ -I shell/
+BOOTHEADER = -I boot/include/
 ASFLAGS = -f elf
 CFLAGS = -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes \
          -Wmissing-prototypes -m32
@@ -193,10 +194,28 @@ $(BUILD_DIR)/switch.o: thread/switch.S
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
+$(BUILD_DIR)/mbr.bin: boot/mbr.S
+	$(AS) ${BOOTHEADER} $^ -o $@
+
+$(BUILD_DIR)/loader.bin: boot/loader.S
+	$(AS) ${BOOTHEADER} $^ -o $@
+
 .PHONY : mk_dir hd clean all mk_img run
 
 mk_img:
-	if [[ ! -f $(BUILD_DIR)/hd60M.img ]];then bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img;fi
+	if [[ ! -f $(BUILD_DIR)/hd60M.img ]]; \
+	then \
+		bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img \
+		&& \
+		dd if=$(BUILD_DIR)/mbr.bin \
+				of=$(BUILD_DIR)/hd60M.img \
+				bs=512 count=1  conv=notrunc \
+		&& \
+		dd if=$(BUILD_DIR)/loader.bin \
+				of=$(BUILD_DIR)/hd60M.img \
+				bs=512 count=3 seek=2 conv=notrunc \
+		; \
+	fi
 
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
@@ -209,7 +228,7 @@ hd:
 clean:
 	cd $(BUILD_DIR) && rm -f ./*
 
-build: $(BUILD_DIR)/kernel.bin
+build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
 
 all: mk_dir build mk_img hd
 
