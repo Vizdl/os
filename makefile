@@ -200,9 +200,9 @@ $(BUILD_DIR)/mbr.bin: boot/mbr.S
 $(BUILD_DIR)/loader.bin: boot/loader.S
 	$(AS) ${BOOTHEADER} $^ -o $@
 
-.PHONY : mk_dir hd clean all mk_img run
+.PHONY : mk_dir hd clean all mk_img mk_hd80M run
 
-mk_img:
+mk_img:mk_dir
 	if [[ ! -f $(BUILD_DIR)/hd60M.img ]]; \
 	then \
 		bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img \
@@ -217,10 +217,13 @@ mk_img:
 		; \
 	fi
 
+mk_hd80M:mk_dir scripts/mk_hd80M.sh
+	scripts/mk_hd80M.sh $(BUILD_DIR)/hd80M.img
+
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
 
-hd:
+hd:mk_dir
 	dd if=$(BUILD_DIR)/kernel.bin \
            of=$(BUILD_DIR)/hd60M.img \
            bs=512 count=200 seek=9 conv=notrunc
@@ -230,7 +233,7 @@ clean:
 
 build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
 
-all: mk_dir build mk_img hd
+all: mk_dir build mk_img hd mk_hd80M
 
 run: all config/bochs/bochsrc
 	bochs -qf config/bochs/bochsrc
