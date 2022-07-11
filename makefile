@@ -218,7 +218,7 @@ mk_img:mk_dir
 	fi
 
 mk_hd80M:mk_dir scripts/mk_hd80M.sh
-	scripts/mk_hd80M.sh $(BUILD_DIR)/hd80M.img
+	dos2unix scripts/mk_hd80M.sh && chmod 755 scripts/mk_hd80M.sh && scripts/mk_hd80M.sh $(BUILD_DIR)/hd80M.img
 
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
