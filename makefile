@@ -200,40 +200,35 @@ $(BUILD_DIR)/mbr.bin: boot/mbr.S
 $(BUILD_DIR)/loader.bin: boot/loader.S
 	$(AS) ${BOOTHEADER} $^ -o $@
 
-.PHONY : mk_dir hd clean all mk_img mk_hd80M run
+.PHONY : mk_dir clean all multiboot2 mk_boot_img mk_hd80M run
 
-mk_img:mk_dir
+mk_multiboot2:
+	cd multiboot2 && make && cd ..
+
+cls_mk_multiboot2:
+	cd multiboot2 && make clean && cd ..
+
+mk_boot_img:mk_dir
 	if [[ ! -f $(BUILD_DIR)/hd60M.img ]]; \
 	then \
-		bximage -hd -mode="flat" -size=60 -q $(BUILD_DIR)/hd60M.img \
-		&& \
-		dd if=$(BUILD_DIR)/mbr.bin \
-				of=$(BUILD_DIR)/hd60M.img \
-				bs=512 count=1  conv=notrunc \
-		&& \
-		dd if=$(BUILD_DIR)/loader.bin \
-				of=$(BUILD_DIR)/hd60M.img \
-				bs=512 count=3 seek=2 conv=notrunc \
-		; \
+		dos2unix scripts/mk_hd.sh &&  \
+		chmod 755 scripts/mk_hd.sh &&  \
+		scripts/mk_hd.sh $(BUILD_DIR) 60 && \
+		scripts/fomat_hd.sh $(BUILD_DIR)/hd60M.img multiboot2/kernel.bin config/grub2/grub config/grub2/grub.cfg; \
 	fi
 
-mk_hd80M:mk_dir scripts/mk_hd80M.sh
-	dos2unix scripts/mk_hd80M.sh && chmod 755 scripts/mk_hd80M.sh && scripts/mk_hd80M.sh $(BUILD_DIR)/hd80M.img
+mk_hd80M:mk_dir scripts/mk_hd.sh
+	dos2unix scripts/mk_hd.sh && chmod 755 scripts/mk_hd.sh && scripts/mk_hd.sh $(BUILD_DIR) 80
 
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
 
-hd:mk_dir
-	dd if=$(BUILD_DIR)/kernel.bin \
-           of=$(BUILD_DIR)/hd60M.img \
-           bs=512 count=200 seek=9 conv=notrunc
-
-clean:
+clean: cls_mk_multiboot2
 	cd $(BUILD_DIR) && rm -f ./*
 
 build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
 
-all: mk_dir build mk_img hd mk_hd80M
+all: mk_dir build mk_multiboot2 mk_hd80M mk_boot_img
 
 run: all config/bochs/bochsrc
 	bochs -qf config/bochs/bochsrc
