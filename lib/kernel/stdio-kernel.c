@@ -8,7 +8,8 @@
 #define va_end(args) args = NULL
 
 /* 供内核使用的格式化输出函数 */
-void printk(const char* format, ...) {
+void printk(const char *format, ...)
+{
    va_list args;
    va_start(args, format);
    char buf[1024] = {0};
@@ -16,4 +17,3 @@ void printk(const char* format, ...) {
    va_end(args);
    console_put_str(buf);
 }
-
