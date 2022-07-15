@@ -200,7 +200,7 @@ $(BUILD_DIR)/mbr.bin: boot/mbr.S
 $(BUILD_DIR)/loader.bin: boot/loader.S
 	$(AS) ${BOOTHEADER} $^ -o $@
 
-.PHONY : mk_dir clean all multiboot2 mk_boot_img mk_hd80M run
+.PHONY : mk_dir proc_scripts clean all multiboot2 mk_boot_img mk_hd80M run
 
 mk_multiboot2:
 	cd multiboot2 && make && cd ..
@@ -208,17 +208,18 @@ mk_multiboot2:
 cls_mk_multiboot2:
 	cd multiboot2 && make clean && cd ..
 
-mk_boot_img:mk_dir
+proc_scripts:scripts
+	find scripts/ -name *.sh | xargs -I {} dos2unix {} && chmod 755 scripts -R
+
+mk_boot_img:mk_dir proc_scripts
 	if [[ ! -f $(BUILD_DIR)/hd60M.img ]]; \
 	then \
-		dos2unix scripts/mk_hd.sh &&  \
-		chmod 755 scripts/mk_hd.sh &&  \
 		scripts/mk_hd.sh $(BUILD_DIR) 60 && \
 		scripts/fomat_hd.sh $(BUILD_DIR)/hd60M.img multiboot2/kernel.bin config/grub2/grub config/grub2/grub.cfg; \
 	fi
 
-mk_hd80M:mk_dir scripts/mk_hd.sh
-	dos2unix scripts/mk_hd.sh && chmod 755 scripts/mk_hd.sh && scripts/mk_hd.sh $(BUILD_DIR) 80
+mk_hd80M:mk_dir proc_scripts
+	scripts/mk_hd.sh $(BUILD_DIR) 80
 
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
