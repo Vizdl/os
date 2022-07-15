@@ -1,5 +1,5 @@
 BUILD_DIR = ./build
-ENTRY_POINT = 0xc0001500
+ENTRY_POINT = 0x100000
 AS = nasm
 CC = gcc
 LD = ld
@@ -8,18 +8,19 @@ BOOTHEADER = -I boot/include/
 ASFLAGS = -f elf
 CFLAGS = -Wall $(LIB) -c -fno-builtin -W -Wstrict-prototypes \
          -Wmissing-prototypes -m32
-LDFLAGS = -Ttext $(ENTRY_POINT) -e main -Map $(BUILD_DIR)/kernel.map -m elf_i386
-OBJS = $(BUILD_DIR)/main.o $(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o \
-      $(BUILD_DIR)/timer.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o \
-      $(BUILD_DIR)/debug.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/bitmap.o \
-      $(BUILD_DIR)/string.o $(BUILD_DIR)/thread.o $(BUILD_DIR)/list.o \
-      $(BUILD_DIR)/switch.o $(BUILD_DIR)/console.o $(BUILD_DIR)/sync.o \
-      $(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o $(BUILD_DIR)/tss.o \
-      $(BUILD_DIR)/process.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall-init.o \
-      $(BUILD_DIR)/stdio.o $(BUILD_DIR)/ide.o $(BUILD_DIR)/stdio-kernel.o $(BUILD_DIR)/fs.o \
-      $(BUILD_DIR)/inode.o $(BUILD_DIR)/file.o $(BUILD_DIR)/dir.o $(BUILD_DIR)/fork.o \
-      $(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o  $(BUILD_DIR)/buildin_cmd.o \
-      $(BUILD_DIR)/exec.o $(BUILD_DIR)/wait_exit.o $(BUILD_DIR)/pipe.o
+LDFLAGS = -Ttext $(ENTRY_POINT) -e _start -Map $(BUILD_DIR)/kernel.map -m elf_i386
+OBJS = $(BUILD_DIR)/boot.o $(BUILD_DIR)/multiboot2.o $(BUILD_DIR)/main.o \
+		$(BUILD_DIR)/init.o $(BUILD_DIR)/interrupt.o $(BUILD_DIR)/fs.o \
+		$(BUILD_DIR)/timer.o $(BUILD_DIR)/kernel.o $(BUILD_DIR)/print.o \
+		$(BUILD_DIR)/debug.o $(BUILD_DIR)/memory.o $(BUILD_DIR)/bitmap.o \
+		$(BUILD_DIR)/string.o $(BUILD_DIR)/thread.o $(BUILD_DIR)/list.o \
+		$(BUILD_DIR)/switch.o $(BUILD_DIR)/console.o $(BUILD_DIR)/sync.o \
+		$(BUILD_DIR)/keyboard.o $(BUILD_DIR)/ioqueue.o $(BUILD_DIR)/tss.o \
+		$(BUILD_DIR)/process.o $(BUILD_DIR)/syscall.o $(BUILD_DIR)/syscall-init.o \
+		$(BUILD_DIR)/stdio.o $(BUILD_DIR)/ide.o $(BUILD_DIR)/stdio-kernel.o \
+		$(BUILD_DIR)/inode.o $(BUILD_DIR)/file.o $(BUILD_DIR)/dir.o $(BUILD_DIR)/fork.o \
+		$(BUILD_DIR)/shell.o $(BUILD_DIR)/assert.o  $(BUILD_DIR)/buildin_cmd.o \
+		$(BUILD_DIR)/exec.o $(BUILD_DIR)/wait_exit.o $(BUILD_DIR)/pipe.o
 
 ##############     c代码编译     ###############
 $(BUILD_DIR)/main.o: kernel/main.c lib/kernel/print.h \
@@ -178,7 +179,12 @@ $(BUILD_DIR)/pipe.o: shell/pipe.c shell/pipe.h lib/stdint.h kernel/memory.h \
      	device/ide.h thread/sync.h thread/thread.h fs/dir.h fs/inode.h fs/fs.h \
       	device/ioqueue.h thread/thread.h
 	$(CC) $(CFLAGS) $< -o $@
+	
+$(BUILD_DIR)/boot.o: boot/multiboot2/boot.S boot/multiboot2/multiboot2.h
+	$(CC) $(CFLAGS) $< -o $@
 
+$(BUILD_DIR)/multiboot2.o: boot/multiboot2/multiboot2.c boot/multiboot2/multiboot2.h
+	$(CC) $(CFLAGS) $< -o $@
 
 ##############    汇编代码编译    ###############
 $(BUILD_DIR)/kernel.o: kernel/kernel.S
@@ -194,19 +200,7 @@ $(BUILD_DIR)/switch.o: thread/switch.S
 $(BUILD_DIR)/kernel.bin: $(OBJS)
 	$(LD) $(LDFLAGS) $^ -o $@
 
-$(BUILD_DIR)/mbr.bin: boot/mbr.S
-	$(AS) ${BOOTHEADER} $^ -o $@
-
-$(BUILD_DIR)/loader.bin: boot/loader.S
-	$(AS) ${BOOTHEADER} $^ -o $@
-
-.PHONY : mk_dir proc_scripts clean all multiboot2 mk_boot_img mk_hd80M run
-
-mk_multiboot2:
-	cd multiboot2 && make && cd ..
-
-cls_mk_multiboot2:
-	cd multiboot2 && make clean && cd ..
+.PHONY : mk_dir proc_scripts clean all mk_boot_img mk_hd80M run
 
 proc_scripts:scripts
 	find scripts/ -name *.sh | xargs -I {} dos2unix {} && chmod 755 scripts -R
@@ -215,7 +209,7 @@ mk_boot_img:mk_dir proc_scripts
 	if [[ ! -f $(BUILD_DIR)/hd60M.img ]]; \
 	then \
 		scripts/mk_hd.sh $(BUILD_DIR) 60 && \
-		scripts/fomat_hd.sh $(BUILD_DIR)/hd60M.img multiboot2/kernel.bin config/grub2/grub config/grub2/grub.cfg; \
+		scripts/fomat_hd.sh $(BUILD_DIR)/hd60M.img ${BUILD_DIR}/kernel.bin config/grub2/grub config/grub2/grub.cfg; \
 	fi
 
 mk_hd80M:mk_dir proc_scripts
@@ -224,12 +218,12 @@ mk_hd80M:mk_dir proc_scripts
 mk_dir:
 	if [[ ! -d $(BUILD_DIR) ]];then mkdir $(BUILD_DIR);fi
 
-clean: cls_mk_multiboot2
+clean:
 	cd $(BUILD_DIR) && rm -f ./*
 
-build: $(BUILD_DIR)/mbr.bin $(BUILD_DIR)/loader.bin $(BUILD_DIR)/kernel.bin
+build: $(BUILD_DIR)/kernel.bin
 
-all: mk_dir build mk_multiboot2 mk_hd80M mk_boot_img
+all: mk_dir build mk_hd80M mk_boot_img
 
 run: all config/bochs/bochsrc
 	bochs -qf config/bochs/bochsrc

@@ -38,7 +38,7 @@
 #define GRUB_MULTIBOOT_ARCHITECTURE_I386 MULTIBOOT_ARCHITECTURE_I386
 
 	.text
-	.globl start, _start
+	.globl start, _start, multiboot_header
 start:
 _start:
 	jmp multiboot_entry
@@ -118,7 +118,7 @@ multiboot_entry:
 
 	/* Halt. */
 	pushl $halt_message
-	call EXT_C(printf)
+	call EXT_C(cprintf)
 
 loop:
 	hlt
